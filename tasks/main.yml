@@ -1,0 +1,33 @@
+# ansible-roles/nginx/tasks/main.yml
+---
+- name: Install Nginx
+  apt:
+    name: nginx
+    state: present
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+
+- name: Add Nginx configuration
+  template:
+    src: "{{ nginx_custom_template | default('nginx-config.j2') }}"
+    dest: "/etc/nginx/sites-available/{{ nginx_server_name }}"
+  notify:
+    - restart nginx
+
+- name: Enable Nginx site
+  shell: ln -s /etc/nginx/sites-available/{{ nginx_server_name }} /etc/nginx/sites-enabled/
+
+- name: Ensure Nginx is running and enabled
+  systemd:
+    name: nginx
+    state: started
+    enabled: yes
+
+handlers:
+  - name: restart nginx
+    systemd:
+      name: nginx
+      state: restarted
