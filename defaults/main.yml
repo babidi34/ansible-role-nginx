@@ -1,10 +1,9 @@
 ---
 # defaults file for roles/nginx
-nginx_server_name: "localhost"
+nginx_server_name: "{{ ansible_fqdn | lower }}" 
 nginx_listen_port: 80
 nginx_ssl_enabled: false
 nginx_ssl_certificate: "/etc/nginx/ssl/nginx.crt"
 nginx_ssl_certificate_key: "/etc/nginx/ssl/nginx.key"
 nginx_reverse_proxy_enabled: false
 nginx_reverse_proxy_target: "http://localhost:8080"
-nginx_custom_template: ""

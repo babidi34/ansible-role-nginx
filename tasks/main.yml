@@ -1,33 +1,55 @@
 # ansible-roles/nginx/tasks/main.yml
 ---
+- name: Include OS-specific variables
+  include_vars:
+    file: "{{ item }}"
+  with_first_found:
+    - "{{ ansible_facts['os_family'] }}.yml"
+    - "main.yml"
+
 - name: Install Nginx
   apt:
     name: nginx
     state: present
 
+- name: Create Nginx configuration directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  with_items:
+    - "{{ nginx_config_dir }}/sites-available"
+    - "{{ nginx_config_dir }}/sites-enabled"
+
 - name: Remove default nginx site
   file:
-    path: /etc/nginx/sites-enabled/default
+    path: "{{ nginx_config_dir }}/sites-enabled/default"
     state: absent
+
+- name: Update Nginx configuration to include sites-enabled
+  lineinfile:
+    path: "{{ nginx_config_dir }}/nginx.conf"
+    line: "include {{ nginx_config_dir }}/sites-enabled/*;"
+    insertafter: '^http {'
+
 
 - name: Add Nginx configuration
   template:
-    src: "{{ nginx_custom_template | default('nginx-config.j2') }}"
-    dest: "/etc/nginx/sites-available/{{ nginx_server_name }}"
+    src: "{{ nginx_custom_template | default('nginx-config-default.j2') }}"
+    dest: "{{ nginx_config_dir }}/sites-available/{{ nginx_server_name }}"
   notify:
     - restart nginx
 
 - name: Enable Nginx site
-  shell: ln -s /etc/nginx/sites-available/{{ nginx_server_name }} /etc/nginx/sites-enabled/
+  file:
+    src: "{{ nginx_config_dir }}/sites-available/{{ nginx_server_name }}"
+    dest: "{{ nginx_config_dir }}/sites-enabled/{{ nginx_server_name }}"
+    state: link
 
 - name: Ensure Nginx is running and enabled
   systemd:
     name: nginx
     state: started
     enabled: yes
-
-handlers:
-  - name: restart nginx
-    systemd:
-      name: nginx
-      state: restarted
